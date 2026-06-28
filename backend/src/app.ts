@@ -40,12 +40,12 @@ app.use(routes)
 app.use(errors())
 app.use(errorHandler)
 
-const sleep = (delayMs: number) =>
+const waitForRetry = (delayMs: number) =>
     new Promise((resolve) => {
         setTimeout(resolve, delayMs)
     })
 
-const connectToDatabase = async (
+const establishMongoConnection = async (
     retries = 10,
     delayMs = 2000,
     attempt = 1
@@ -66,12 +66,12 @@ const connectToDatabase = async (
             return
         }
 
-        await sleep(delayMs)
-        await connectToDatabase(retries, delayMs, attempt + 1)
+        await waitForRetry(delayMs)
+        await establishMongoConnection(retries, delayMs, attempt + 1)
     }
 }
 
-const bootstrap = async () => {
+const bootstrapApplication = async () => {
     const server = app.listen(PORT, () => {
         console.log(`Server running on port ${PORT}`)
     })
@@ -82,10 +82,10 @@ const bootstrap = async () => {
     })
 
     try {
-        await connectToDatabase()
+        await establishMongoConnection()
     } catch (error) {
         console.error('Bootstrap error:', error)
     }
 }
 
-bootstrap()
+bootstrapApplication()

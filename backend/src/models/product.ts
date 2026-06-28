@@ -57,8 +57,8 @@ const cardsSchema = new mongoose.Schema<IProduct>(
 cardsSchema.index({ title: 'text' })
 
 cardsSchema.pre('findOneAndUpdate', async function deleteOldImage() {
-    // @ts-ignore
-    const updateImage = this.getUpdate().$set?.image
+    const update = this.getUpdate() as { $set?: { image?: IFile } }
+    const updateImage = update.$set?.image
     const docToUpdate = await this.model.findOne(this.getQuery())
 
     if (updateImage && docToUpdate) {

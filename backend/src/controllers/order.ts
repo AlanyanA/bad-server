@@ -35,8 +35,6 @@ const normalizeLimit = (
     return Math.min(Math.trunc(parsed), max)
 }
 
-// eslint-disable-next-line max-len
-// GET /orders?page=2&limit=5&sortField=totalAmount&sortOrder=desc&orderDateFrom=2024-07-01&orderDateTo=2024-08-01&status=delivering&totalAmountFrom=100&totalAmountTo=1000&search=%2B1
 export const getOrders = async (
     req: Request,
     res: Response,
@@ -335,7 +333,6 @@ export const getOrdersCurrentUser = async (
     }
 }
 
-// Get order by number
 export const getOrderByNumber = async (
     req: Request,
     res: Response,
@@ -408,7 +405,6 @@ export const getOrderCurrentUserByNumber = async (
     }
 }
 
-// POST /order
 export const createOrder = async (
     req: Request,
     res: Response,
@@ -482,7 +478,6 @@ export const createOrder = async (
     }
 }
 
-// Update an order
 export const updateOrder = async (
     req: Request,
     res: Response,
@@ -536,7 +531,6 @@ export const updateOrder = async (
     }
 }
 
-// Delete an order
 export const deleteOrder = async (
     req: Request,
     res: Response,

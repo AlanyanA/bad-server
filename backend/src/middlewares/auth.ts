@@ -7,16 +7,18 @@ import NotFoundError from '../errors/not-found-error'
 import UnauthorizedError from '../errors/unauthorized-error'
 import UserModel, { Role } from '../models/user'
 
+const extractBearerToken = (header: string | undefined) => {
+    if (!header || !header.startsWith('Bearer ')) {
+        return null
+    }
+
+    const [, token] = header.split(' ')
+    return token || null
+}
+
 const auth = async (req: Request, res: Response, next: NextFunction) => {
     try {
-        const authHeader = req.header('Authorization')
-
-        if (!authHeader || !authHeader.startsWith('Bearer ')) {
-            return next(new UnauthorizedError('Невалидный токен'))
-        }
-
-        const accessTokenParts = authHeader.split(' ')
-        const accessToken = accessTokenParts[1]
+        const accessToken = extractBearerToken(req.header('Authorization'))
 
         if (!accessToken) {
             return next(new UnauthorizedError('Невалидный токен'))

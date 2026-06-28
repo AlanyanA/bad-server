@@ -16,18 +16,21 @@ import {
     verifyOrigin,
 } from '../middlewares/csfr'
 
+const registerAuthRoutes = (router: Router) => {
+    router.get('/csrf-token', issueCsrfToken, getCsrfToken)
+
+    router.get('/user', auth, getCurrentUser)
+    router.get('/user/roles', auth, getCurrentUserRoles)
+
+    router.post('/login', issueCsrfToken, login)
+    router.post('/register', issueCsrfToken, register)
+
+    router.patch('/me', auth, verifyOrigin, verifyCsrfToken, updateCurrentUser)
+    router.post('/token', verifyOrigin, verifyCsrfToken, refreshAccessToken)
+    router.post('/logout', verifyOrigin, verifyCsrfToken, logout)
+}
+
 const authRouter = Router()
-
-authRouter.get('/csrf-token', issueCsrfToken, getCsrfToken)
-
-authRouter.get('/user', auth, getCurrentUser)
-authRouter.get('/user/roles', auth, getCurrentUserRoles)
-
-authRouter.post('/login', issueCsrfToken, login)
-authRouter.post('/register', issueCsrfToken, register)
-
-authRouter.patch('/me', auth, verifyOrigin, verifyCsrfToken, updateCurrentUser)
-authRouter.post('/token', verifyOrigin, verifyCsrfToken, refreshAccessToken)
-authRouter.post('/logout', verifyOrigin, verifyCsrfToken, logout)
+registerAuthRoutes(authRouter)
 
 export default authRouter

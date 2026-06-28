@@ -12,36 +12,47 @@ import User from '../models/user'
 import sanitizeText from '../utils/sanitizeText'
 import { CSRF_COOKIE_NAME } from '../middlewares/csfr'
 
-// POST /auth/login
+const attachRefreshCookie = (res: Response, refreshToken: string) => {
+    res.cookie(
+        REFRESH_TOKEN.cookie.name,
+        refreshToken,
+        REFRESH_TOKEN.cookie.options
+    )
+}
+
+const sendAuthPayload = (
+    res: Response,
+    user: unknown,
+    accessToken: string,
+    statusCode = 200
+) => {
+    return res.status(statusCode).json({
+        success: true,
+        user,
+        accessToken,
+    })
+}
+
 const login = async (req: Request, res: Response, next: NextFunction) => {
     try {
         const { email, password } = req.body
 
         if (typeof email !== 'string' || typeof password !== 'string') {
-        return next(new UnauthorizedError('Неправильные почта или пароль'))
+            return next(new UnauthorizedError('Неправильные почта или пароль'))
         }
 
         const user = await User.findUserByCredentials(email, password)
         const accessToken = user.generateAccessToken()
         const refreshToken = await user.generateRefreshToken()
 
-        res.cookie(
-            REFRESH_TOKEN.cookie.name,
-            refreshToken,
-            REFRESH_TOKEN.cookie.options
-        )
+        attachRefreshCookie(res, refreshToken)
 
-        return res.json({
-            success: true,
-            user,
-            accessToken,
-        })
+        return sendAuthPayload(res, user, accessToken)
     } catch (err) {
         return next(err)
     }
 }
 
-// POST /auth/register
 const register = async (req: Request, res: Response, next: NextFunction) => {
     try {
         const { email, password, name } = req.body
@@ -64,17 +75,14 @@ const register = async (req: Request, res: Response, next: NextFunction) => {
         const accessToken = newUser.generateAccessToken()
         const refreshToken = await newUser.generateRefreshToken()
 
-        res.cookie(
-            REFRESH_TOKEN.cookie.name,
-            refreshToken,
-            REFRESH_TOKEN.cookie.options
-        )
+        attachRefreshCookie(res, refreshToken)
 
-        return res.status(constants.HTTP_STATUS_CREATED).json({
-            success: true,
-            user: newUser,
+        return sendAuthPayload(
+            res,
+            newUser,
             accessToken,
-        })
+            constants.HTTP_STATUS_CREATED
+        )
     } catch (error) {
         if (error instanceof MongooseError.ValidationError) {
             return next(new BadRequestError(error.message))
@@ -90,7 +98,6 @@ const register = async (req: Request, res: Response, next: NextFunction) => {
     }
 }
 
-// GET /auth/user
 const getCurrentUser = async (
     _req: Request,
     res: Response,
@@ -144,7 +151,6 @@ const deleteRefreshTokenInUser = async (
     return user
 }
 
-// POST /auth/logout
 const logout = async (req: Request, res: Response, next: NextFunction) => {
     try {
         await deleteRefreshTokenInUser(req, res, next)
@@ -171,7 +177,6 @@ const logout = async (req: Request, res: Response, next: NextFunction) => {
     }
 }
 
-// POST /auth/token
 const refreshAccessToken = async (
     req: Request,
     res: Response,
@@ -187,23 +192,14 @@ const refreshAccessToken = async (
         const accessToken = await userWithRefreshTkn.generateAccessToken()
         const refreshToken = await userWithRefreshTkn.generateRefreshToken()
 
-        res.cookie(
-            REFRESH_TOKEN.cookie.name,
-            refreshToken,
-            REFRESH_TOKEN.cookie.options
-        )
+        attachRefreshCookie(res, refreshToken)
 
-        return res.json({
-            success: true,
-            user: userWithRefreshTkn,
-            accessToken,
-        })
+        return sendAuthPayload(res, userWithRefreshTkn, accessToken)
     } catch (error) {
         return next(error)
     }
 }
 
-// GET /auth/csrf-token
 const getCsrfToken = async (
     _req: Request,
     res: Response,

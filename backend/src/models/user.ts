@@ -123,13 +123,16 @@ const userSchema = new mongoose.Schema<IUser, IUserModel, IUserMethods>(
     }
 )
 
+const hashPasswordValue = (value: string) =>
+    crypto.createHash('md5').update(value).digest('hex')
+
+const isStoredPasswordValid = (plainPassword: string, storedHash: string) =>
+    hashPasswordValue(plainPassword) === storedHash
+
 userSchema.pre('save', async function hashingPassword(next) {
     try {
         if (this.isModified('password')) {
-            this.password = crypto
-                .createHash('md5')
-                .update(this.password)
-                .digest('hex')
+            this.password = hashPasswordValue(this.password)
         }
 
         next()
@@ -196,9 +199,7 @@ userSchema.statics.findUserByCredentials = async function findByCredentials(
         .select('+password')
         .orFail(() => new UnauthorizedError('Неправильные почта или пароль'))
 
-    const passwdMatch =
-        crypto.createHash('md5').update(safePassword).digest('hex') ===
-        user.password
+    const passwdMatch = isStoredPasswordValid(safePassword, user.password)
 
     if (!passwdMatch) {
         throw new UnauthorizedError('Неправильные почта или пароль')

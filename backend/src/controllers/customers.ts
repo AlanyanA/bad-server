@@ -9,7 +9,6 @@ import { normalizeLimit, normalizePage } from '../utils/pagination'
 import sanitizePhone from '../utils/sanitizePhone'
 import sanitizeText from '../utils/sanitizeText'
 
-// GET /customers
 export const getCustomers = async (
     req: Request,
     res: Response,
@@ -239,7 +238,6 @@ export const getCustomers = async (
     }
 }
 
-// GET /customers/:id
 export const getCustomerById = async (
     req: Request,
     res: Response,
@@ -257,7 +255,6 @@ export const getCustomerById = async (
     }
 }
 
-// PATCH /customers/:id
 export const updateCustomer = async (
     req: Request,
     res: Response,
@@ -295,7 +292,6 @@ export const updateCustomer = async (
     }
 }
 
-// DELETE /customers/:id
 export const deleteCustomer = async (
     req: Request,
     res: Response,
