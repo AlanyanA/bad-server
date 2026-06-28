@@ -17,28 +17,42 @@ const app = express()
 const { PORT = 3000, FRONTEND_URL = 'http://localhost:5173' } = process.env
 
 const corsOptions = {
-    origin: (origin: string | undefined, callback: (err: Error | null, allow?: string | boolean) => void) => {
-        // Allow requests without origin (mobile apps, curl, desktop apps)
+    origin: (
+        origin: string | undefined,
+        callback: (err: Error | null, allow?: string | boolean) => void
+    ) => {
         if (!origin) {
             return callback(null, true)
         }
-        
-        // Allow local development origins
-        if (origin === FRONTEND_URL || 
-            origin === 'http://localhost' ||
-            origin === 'http://localhost:80' ||
-            origin === 'http://localhost:3000' ||
-            origin === 'http://localhost:5173' ||
-            origin === 'http://127.0.0.1' ||
-            origin?.includes('localhost')) {
+
+        const allowedOrigins = [
+            FRONTEND_URL,
+            'http://localhost',
+            'http://localhost:80',
+            'http://localhost:3000',
+            'http://localhost:5173',
+            'http://127.0.0.1',
+            'http://127.0.0.1:5173',
+        ]
+
+        if (
+            allowedOrigins.includes(origin) ||
+            origin.includes('localhost') ||
+            origin.includes('127.0.0.1')
+        ) {
             return callback(null, true)
         }
-        
-        callback(null, FRONTEND_URL)
+
+        return callback(null, FRONTEND_URL)
     },
     credentials: true,
     methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-CSRF-Token', 'X-XSRF-Token'],
+    allowedHeaders: [
+        'Content-Type',
+        'Authorization',
+        'X-CSRF-Token',
+        'X-XSRF-Token',
+    ],
     optionsSuccessStatus: 204,
 }
 
