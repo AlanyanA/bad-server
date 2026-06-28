@@ -19,33 +19,9 @@ const corsOrigin = FRONTEND_URL || 'http://localhost:5173'
 
 const corsOptions = {
     origin: (
-        origin: string | undefined,
+        _origin: string | undefined,
         callback: (err: Error | null, allow?: string | boolean) => void
-    ) => {
-        if (!origin) {
-            return callback(null, corsOrigin)
-        }
-
-        const allowedOrigins = [
-            corsOrigin,
-            'http://localhost',
-            'http://localhost:80',
-            'http://localhost:3000',
-            'http://localhost:5173',
-            'http://127.0.0.1',
-            'http://127.0.0.1:5173',
-        ]
-
-        if (
-            allowedOrigins.includes(origin) ||
-            origin.includes('localhost') ||
-            origin.includes('127.0.0.1')
-        ) {
-            return callback(null, corsOrigin)
-        }
-
-        return callback(null, corsOrigin)
-    },
+    ) => callback(null, corsOrigin),
     credentials: true,
     methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
     allowedHeaders: [
