@@ -1,6 +1,5 @@
 import { errors } from 'celebrate'
 import cookieParser from 'cookie-parser'
-import cors from 'cors'
 import 'dotenv/config'
 import express, { json, urlencoded } from 'express'
 import rateLimit from 'express-rate-limit'
@@ -14,24 +13,7 @@ import routes from './routes'
 
 const app = express()
 
-const { PORT = 3000, FRONTEND_URL = 'http://localhost:5173' } = process.env
-const corsOrigin = FRONTEND_URL || 'http://localhost:5173'
-
-const corsOptions = {
-    origin: (
-        _origin: string | undefined,
-        callback: (err: Error | null, allow?: string | boolean) => void
-    ) => callback(null, corsOrigin),
-    credentials: true,
-    methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
-    allowedHeaders: [
-        'Content-Type',
-        'Authorization',
-        'X-CSRF-Token',
-        'X-XSRF-Token',
-    ],
-    optionsSuccessStatus: 204,
-}
+const { PORT = 3000 } = process.env
 
 const limiter = rateLimit({
     windowMs: 15 * 60 * 1000,
@@ -46,7 +28,6 @@ const limiter = rateLimit({
 
 app.use(helmet())
 app.use(cookieParser())
-app.use(cors(corsOptions))
 
 app.use(serveStatic(path.join(__dirname, 'public')))
 
