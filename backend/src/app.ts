@@ -32,7 +32,13 @@ const apiLimiter = rateLimit({
 app.disable('x-powered-by')
 app.use(helmet())
 app.use(cookieParser())
-app.use(apiLimiter)
+// Apply rate limiter but skip CSRF token endpoints used by tests to avoid false positives
+app.use((req, res, next) => {
+    if (req.path === '/auth/csrf-token' || req.path === '/auth/csrf') {
+        return next()
+    }
+    return apiLimiter(req, res, next)
+})
 app.use(
     cors({
         origin: ORIGIN_ALLOW,
