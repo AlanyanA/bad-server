@@ -1,7 +1,6 @@
 /* eslint-disable no-param-reassign */
 import crypto from 'crypto'
 import jwt from 'jsonwebtoken'
-import md5 from 'md5'
 import mongoose, { Document, HydratedDocument, Model, Types } from 'mongoose'
 import validator from 'validator'
 import { ACCESS_TOKEN, REFRESH_TOKEN } from '../config'
@@ -127,7 +126,10 @@ const userSchema = new mongoose.Schema<IUser, IUserModel, IUserMethods>(
 userSchema.pre('save', async function hashingPassword(next) {
     try {
         if (this.isModified('password')) {
-            this.password = md5(this.password)
+            this.password = crypto
+                .createHash('md5')
+                .update(this.password)
+                .digest('hex')
         }
 
         next()
@@ -194,7 +196,9 @@ userSchema.statics.findUserByCredentials = async function findByCredentials(
         .select('+password')
         .orFail(() => new UnauthorizedError('Неправильные почта или пароль'))
 
-    const passwdMatch = md5(safePassword) === user.password
+    const passwdMatch =
+        crypto.createHash('md5').update(safePassword).digest('hex') ===
+        user.password
 
     if (!passwdMatch) {
         throw new UnauthorizedError('Неправильные почта или пароль')

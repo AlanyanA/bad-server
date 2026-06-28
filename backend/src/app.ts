@@ -68,18 +68,51 @@ app.use(routes)
 app.use(errors())
 app.use(errorHandler)
 
-const bootstrap = async () => {
+const sleep = (delayMs: number) =>
+    new Promise((resolve) => {
+        setTimeout(resolve, delayMs)
+    })
+
+const connectToDatabase = async (
+    retries = 10,
+    delayMs = 2000,
+    attempt = 1
+) => {
     try {
         await mongoose.connect(DB_ADDRESS)
-        app.listen(PORT, () => {
-            console.log(`Server running on port ${PORT}`)
-        }).on('error', (error) => {
-            console.error('Server error:', error)
-            process.exit(1)
-        })
+        console.log('Database connected')
+    } catch (error) {
+        console.error(
+            `Database connection attempt ${attempt}/${retries} failed`,
+            error
+        )
+
+        if (attempt >= retries) {
+            console.warn(
+                'Database unavailable; continuing to start the server for non-database routes'
+            )
+            return
+        }
+
+        await sleep(delayMs)
+        await connectToDatabase(retries, delayMs, attempt + 1)
+    }
+}
+
+const bootstrap = async () => {
+    const server = app.listen(PORT, () => {
+        console.log(`Server running on port ${PORT}`)
+    })
+
+    server.on('error', (error) => {
+        console.error('Server error:', error)
+        process.exit(1)
+    })
+
+    try {
+        await connectToDatabase()
     } catch (error) {
         console.error('Bootstrap error:', error)
-        process.exit(1)
     }
 }
 
