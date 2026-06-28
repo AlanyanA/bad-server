@@ -15,6 +15,7 @@ import routes from './routes'
 const app = express()
 
 const { PORT = 3000, FRONTEND_URL = 'http://localhost:5173' } = process.env
+const corsOrigin = FRONTEND_URL || 'http://localhost:5173'
 
 const corsOptions = {
     origin: (
@@ -22,11 +23,11 @@ const corsOptions = {
         callback: (err: Error | null, allow?: string | boolean) => void
     ) => {
         if (!origin) {
-            return callback(null, true)
+            return callback(null, corsOrigin)
         }
 
         const allowedOrigins = [
-            FRONTEND_URL,
+            corsOrigin,
             'http://localhost',
             'http://localhost:80',
             'http://localhost:3000',
@@ -40,10 +41,10 @@ const corsOptions = {
             origin.includes('localhost') ||
             origin.includes('127.0.0.1')
         ) {
-            return callback(null, true)
+            return callback(null, corsOrigin)
         }
 
-        return callback(null, FRONTEND_URL)
+        return callback(null, corsOrigin)
     },
     credentials: true,
     methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
