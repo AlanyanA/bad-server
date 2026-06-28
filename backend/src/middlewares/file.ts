@@ -1,10 +1,21 @@
+import crypto from 'crypto'
 import { Request, Express } from 'express'
 import multer, { FileFilterCallback } from 'multer'
 import { mkdirSync } from 'fs'
 import { join } from 'path'
+import BadRequestError from '../errors/bad-request-error'
 
 type DestinationCallback = (error: Error | null, destination: string) => void
 type FileNameCallback = (error: Error | null, filename: string) => void
+
+const allowedMimeTypes = ['image/png', 'image/jpg', 'image/jpeg', 'image/webp']
+
+const mimeToExtensionMap: Record<string, string> = {
+    'image/png': '.png',
+    'image/jpg': '.jpg',
+    'image/jpeg': '.jpg',
+    'image/webp': '.webp',
+}
 
 const storage = multer.diskStorage({
     destination: (
@@ -12,18 +23,14 @@ const storage = multer.diskStorage({
         _file: Express.Multer.File,
         cb: DestinationCallback
     ) => {
-        const safeUploadTemp = process.env.UPLOAD_PATH_TEMP
-            ? process.env.UPLOAD_PATH_TEMP.replace(/[^a-zA-Z0-9_-]/g, '')
-            : ''
         const destinationPath = join(
             __dirname,
-            safeUploadTemp
-                ? `../public/${safeUploadTemp}`
+            process.env.UPLOAD_PATH_TEMP
+                ? `../public/${process.env.UPLOAD_PATH_TEMP}`
                 : '../public'
         )
 
         mkdirSync(destinationPath, { recursive: true })
-
         cb(null, destinationPath)
     },
 
@@ -32,41 +39,30 @@ const storage = multer.diskStorage({
         file: Express.Multer.File,
         cb: FileNameCallback
     ) => {
-        const timestamp = Date.now()
-        const extension = file.originalname.split('.').pop()?.toLowerCase() || 'bin'
-        const safeBaseName = file.originalname
-            .replace(/\.[^/.]+$/, '')
-            .replace(/[^a-zA-Z0-9_-]/g, '_')
-            .slice(0, 40) || 'file'
-        cb(null, `${safeBaseName}_${timestamp}.${extension}`)
+        const safeExtension = mimeToExtensionMap[file.mimetype] || '.bin'
+        const safeName = `${crypto.randomUUID()}${safeExtension}`
+        cb(null, safeName)
     },
 })
-
-const types = [
-    'image/png',
-    'image/jpg',
-    'image/jpeg',
-    'image/gif',
-    'image/webp',
-]
 
 const fileFilter = (
     _req: Request,
     file: Express.Multer.File,
     cb: FileFilterCallback
 ) => {
-    if (!types.includes(file.mimetype)) {
-        return cb(null, false)
+    if (!allowedMimeTypes.includes(file.mimetype)) {
+        return cb(new BadRequestError('Недопустимый тип файла'))
     }
 
     return cb(null, true)
 }
 
-export default multer({
+const fileMiddleware = multer({
     storage,
     fileFilter,
     limits: {
-        // allow slightly above 10MB so controller enforces the 10MB max
-        fileSize: 11 * 1024 * 1024,
+        fileSize: 10 * 1024 * 1024,
     },
 })
+
+export default fileMiddleware

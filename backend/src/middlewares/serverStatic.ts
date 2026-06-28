@@ -3,24 +3,32 @@ import fs from 'fs'
 import path from 'path'
 
 export default function serveStatic(baseDir: string) {
+    const absoluteBaseDir = path.resolve(baseDir)
+
     return (req: Request, res: Response, next: NextFunction) => {
-        const requestedPath = path.normalize(req.path)
-        const filePath = path.join(baseDir, requestedPath)
-        const normalizedPath = path.normalize(filePath)
+        try {
+            const requestPath = decodeURIComponent(req.path)
+            const filePath = path.resolve(absoluteBaseDir, `.${requestPath}`)
+            const relative = path.relative(absoluteBaseDir, filePath)
 
-        if (!normalizedPath.startsWith(path.normalize(baseDir + path.sep))) {
-            return next()
-        }
-
-        fs.access(normalizedPath, fs.constants.F_OK, (accessErr) => {
-            if (accessErr) {
-                return next()
+            if (relative.startsWith('..') || path.isAbsolute(relative)) {
+                return res.status(403).json({
+                    success: false,
+                    message: 'Доступ запрещён',
+                })
             }
-            return res.sendFile(normalizedPath, (sendErr) => {
-                if (sendErr) {
-                    next(sendErr)
+
+            fs.access(filePath, fs.constants.F_OK, (err) => {
+                if (err) {
+                    return next()
                 }
+
+                return res.sendFile(filePath, (sendErr) => {
+                    if (sendErr) next(sendErr)
+                })
             })
-        })
+        } catch (error) {
+            return next(error)
+        }
     }
 }

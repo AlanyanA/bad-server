@@ -1,5 +1,6 @@
-import { Request, Response, Router } from 'express'
+import { Router } from 'express'
 import {
+    getCsrfToken,
     getCurrentUser,
     getCurrentUserRoles,
     login,
@@ -10,25 +11,23 @@ import {
 } from '../controllers/auth'
 import auth from '../middlewares/auth'
 import {
-    validateAuthentication,
-    validateUserBody,
-    validateUserUpdateBody,
-} from '../middlewares/validations'
+    issueCsrfToken,
+    verifyCsrfToken,
+    verifyOrigin,
+} from '../middlewares/csrf'
 
 const authRouter = Router()
 
-const csrfHandler = (req: Request, res: Response) => {
-    res.status(200).json({ csrfToken: req.csrfToken() })
-}
+authRouter.get('/csrf-token', issueCsrfToken, getCsrfToken)
 
-authRouter.get('/csrf', csrfHandler)
-authRouter.get('/csrf-token', csrfHandler)
 authRouter.get('/user', auth, getCurrentUser)
-authRouter.patch('/me', auth, validateUserUpdateBody, updateCurrentUser)
 authRouter.get('/user/roles', auth, getCurrentUserRoles)
-authRouter.post('/login', validateAuthentication, login)
-authRouter.post('/token', refreshAccessToken)
-authRouter.post('/logout', logout)
-authRouter.post('/register', validateUserBody, register)
+
+authRouter.post('/login', issueCsrfToken, login)
+authRouter.post('/register', issueCsrfToken, register)
+
+authRouter.patch('/me', auth, verifyOrigin, verifyCsrfToken, updateCurrentUser)
+authRouter.post('/token', verifyOrigin, verifyCsrfToken, refreshAccessToken)
+authRouter.post('/logout', verifyOrigin, verifyCsrfToken, logout)
 
 export default authRouter

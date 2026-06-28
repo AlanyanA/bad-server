@@ -1,68 +1,56 @@
 import { errors } from 'celebrate'
 import cookieParser from 'cookie-parser'
 import cors from 'cors'
-import csurf from 'csurf'
-import helmet from 'helmet'
 import 'dotenv/config'
 import express, { json, urlencoded } from 'express'
 import rateLimit from 'express-rate-limit'
+import helmet from 'helmet'
 import mongoose from 'mongoose'
 import path from 'path'
-import { DB_ADDRESS, ORIGIN_ALLOW } from './config'
+import { DB_ADDRESS } from './config'
 import errorHandler from './middlewares/error-handler'
-import sanitizeRequest from './middlewares/sanitize-request'
 import serveStatic from './middlewares/serverStatic'
 import routes from './routes'
 
-const { PORT = 3000 } = process.env
 const app = express()
-app.set('trust proxy', 1)
 
-const apiLimiter = rateLimit({
-    windowMs: 60 * 1000,
-    // lower default to trigger rate-limit in tests
-    max: 10,
+const { PORT = 3000, FRONTEND_URL = 'http://localhost:5173' } = process.env
+
+const corsOptions = {
+    origin: (_origin: string | undefined, callback: (err: Error | null, allow?: string) => void) => {
+        callback(null, FRONTEND_URL);
+    },
+    credentials: true,
+    methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-CSRF-Token'],
+    optionsSuccessStatus: 204,
+}
+
+const limiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 40,
     standardHeaders: true,
     legacyHeaders: false,
-    handler: (_req, res) => {
-        res.status(429).json({ message: 'Слишком много запросов, повторите позже' })
+    message: {
+        success: false,
+        message: 'Слишком много запросов, попробуйте позже',
     },
 })
 
-app.disable('x-powered-by')
 app.use(helmet())
 app.use(cookieParser())
-// Apply rate limiter but skip CSRF token endpoints used by tests to avoid false positives
-app.use((req, res, next) => {
-    if (req.path === '/auth/csrf-token' || req.path === '/auth/csrf') {
-        return next()
-    }
-    return apiLimiter(req, res, next)
-})
-app.use(
-    cors({
-        origin: ORIGIN_ALLOW,
-        credentials: true,
-    })
-)
-app.options('*', cors({ origin: ORIGIN_ALLOW, credentials: true }))
+app.use(cors(corsOptions))
 
-// Ensure CORS headers are always present (tests expect header even without Origin)
-app.use((req, res, next) => {
-    res.setHeader('Access-Control-Allow-Origin', ORIGIN_ALLOW)
-    res.setHeader('Access-Control-Allow-Credentials', 'true')
-    next()
-})
 app.use(serveStatic(path.join(__dirname, 'public')))
-app.use(urlencoded({ extended: true, limit: '50kb' }))
-app.use(json({ limit: '50kb' }))
-app.use(sanitizeRequest)
-app.use(csurf({ cookie: { httpOnly: true, sameSite: 'lax', secure: process.env.NODE_ENV === 'production' } }))
+
+app.use(urlencoded({ extended: true, limit: '10kb' }))
+app.use(json({ limit: '10kb' }))
+
+app.use(limiter)
+
 app.use(routes)
 app.use(errors())
 app.use(errorHandler)
-
-// eslint-disable-next-line no-console
 
 const bootstrap = async () => {
     try {

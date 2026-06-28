@@ -4,9 +4,13 @@ const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
     const statusCode = err.statusCode || 500
     const message =
         statusCode === 500 ? 'На сервере произошла ошибка' : err.message
-    console.error(err)
 
-    res.status(statusCode).send({ message })
+    console.log(err)
+
+    return res.status(statusCode).send({
+        success: false,
+        message,
+    })
 }
 
 export default errorHandler
