@@ -192,7 +192,7 @@ export const getOrdersCurrentUser = async (
         let orders = user.orders as unknown as IOrder[]
 
         if (search && typeof search === 'string') {
-            const safeTerm = escapeRegExp(search.slice(0, 64))
+            const safeTerm = escapeRegExp(search.replace(/[\s.]+/g, ' ').slice(0, 64))
             const searchRegex = new RegExp(safeTerm, 'i')
             const searchNumber = Number(search)
             const products = await Product.find({ title: searchRegex })
@@ -299,11 +299,27 @@ export const createOrder = async (
         const userId = res.locals.user._id
         const { address, payment, phone, total, email, items, comment } = req.body
 
-        const itemIds = (items || []).map((id: string) => new Types.ObjectId(id))
+        if (typeof comment === 'string' && /<script|<img|javascript:/i.test(comment)) {
+            return next(new BadRequestError('Невалидный комментарий'))
+        }
+
+        if (typeof phone === 'string' && !/^(\+\d+)?(?:\s|-?|\(?\d+\)?)+$/.test(phone)) {
+            return next(new BadRequestError('Невалидный телефон'))
+        }
+
+        if (!Array.isArray(items) || items.length === 0) {
+            return next(new BadRequestError('Невалидные товары'))
+        }
+
+        const itemIds = items.map((id: string) => new Types.ObjectId(id))
         const productsInOrder = await Product.find({ _id: { $in: itemIds } })
 
         if (productsInOrder.length !== itemIds.length) {
             return next(new BadRequestError('Один или несколько товаров не найдены'))
+        }
+
+        if (typeof total !== 'number' || Number.isNaN(total) || total <= 0) {
+            return next(new BadRequestError('Неверная сумма заказа'))
         }
 
         const basket = itemIds.map((itemId: Types.ObjectId) => {

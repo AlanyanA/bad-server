@@ -97,7 +97,7 @@ export const getCustomers = async (
         }
 
         if (search && typeof search === 'string') {
-            const safeTerm = escapeRegExp(search.slice(0, 64))
+            const safeTerm = escapeRegExp(search.replace(/[\s.]+/g, ' ').slice(0, 64))
             const searchRegex = new RegExp(safeTerm, 'i')
             const orders = await Order.find(
                 {
