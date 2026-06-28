@@ -10,7 +10,7 @@ import NotFoundError from '../errors/not-found-error'
 import UnauthorizedError from '../errors/unauthorized-error'
 import User from '../models/user'
 import sanitizeText from '../utils/sanitizeText'
-import { CSRF_COOKIE_NAME } from '../middlewares/csrf'
+import { CSRF_COOKIE_NAME } from '../middlewares/csfr'
 
 // POST /auth/login
 const login = async (req: Request, res: Response, next: NextFunction) => {

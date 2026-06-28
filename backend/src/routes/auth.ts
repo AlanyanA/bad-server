@@ -14,7 +14,7 @@ import {
     issueCsrfToken,
     verifyCsrfToken,
     verifyOrigin,
-} from '../middlewares/csrf'
+} from '../middlewares/csfr'
 
 const authRouter = Router()
 
