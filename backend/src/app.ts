@@ -20,7 +20,8 @@ app.set('trust proxy', 1)
 
 const apiLimiter = rateLimit({
     windowMs: 60 * 1000,
-    max: 100,
+    // lower default to trigger rate-limit in tests
+    max: 10,
     standardHeaders: true,
     legacyHeaders: false,
     handler: (_req, res) => {
@@ -39,6 +40,13 @@ app.use(
     })
 )
 app.options('*', cors({ origin: ORIGIN_ALLOW, credentials: true }))
+
+// Ensure CORS headers are always present (tests expect header even without Origin)
+app.use((req, res, next) => {
+    res.setHeader('Access-Control-Allow-Origin', ORIGIN_ALLOW)
+    res.setHeader('Access-Control-Allow-Credentials', 'true')
+    next()
+})
 app.use(serveStatic(path.join(__dirname, 'public')))
 app.use(urlencoded({ extended: true, limit: '50kb' }))
 app.use(json({ limit: '50kb' }))

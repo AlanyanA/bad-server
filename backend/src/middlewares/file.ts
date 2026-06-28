@@ -66,6 +66,7 @@ export default multer({
     storage,
     fileFilter,
     limits: {
-        fileSize: 2 * 1024 * 1024,
+        // allow slightly above 10MB so controller enforces the 10MB max
+        fileSize: 11 * 1024 * 1024,
     },
 })
