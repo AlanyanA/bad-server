@@ -1,5 +1,6 @@
 import { NextFunction, Request, Response } from 'express'
 import { FilterQuery, Error as MongooseError, Types } from 'mongoose'
+import escapeRegExp from '../utils/escapeRegExp'
 import BadRequestError from '../errors/bad-request-error'
 import NotFoundError from '../errors/not-found-error'
 import Order, { IOrder } from '../models/order'
@@ -89,8 +90,9 @@ export const getOrders = async (
             { $unwind: '$products' },
         ]
 
-        if (search) {
-            const searchRegex = new RegExp(search as string, 'i')
+        if (search && typeof search === 'string') {
+            const safeTerm = escapeRegExp(search.slice(0, 64))
+            const searchRegex = new RegExp(safeTerm, 'i')
             const searchNumber = Number(search)
 
             const searchConditions: any[] = [{ 'products.title': searchRegex }]
@@ -183,9 +185,9 @@ export const getOrdersCurrentUser = async (
 
         let orders = user.orders as unknown as IOrder[]
 
-        if (search) {
-            // если не экранировать то получаем Invalid regular expression: /+1/i: Nothing to repeat
-            const searchRegex = new RegExp(search as string, 'i')
+        if (search && typeof search === 'string') {
+            const safeTerm = escapeRegExp(search.slice(0, 64))
+            const searchRegex = new RegExp(safeTerm, 'i')
             const searchNumber = Number(search)
             const products = await Product.find({ title: searchRegex })
             const productIds = products.map((product) => product._id)
@@ -288,30 +290,38 @@ export const createOrder = async (
     next: NextFunction
 ) => {
     try {
-        const basket: IProduct[] = []
-        const products = await Product.find<IProduct>({})
         const userId = res.locals.user._id
-        const { address, payment, phone, total, email, items, comment } =
-            req.body
+        const { address, payment, phone, total, email, items, comment } = req.body
 
-        items.forEach((id: Types.ObjectId) => {
-            const product = products.find((p) => p._id.equals(id))
+        const itemIds = (items || []).map((id: string) => new Types.ObjectId(id))
+        const productsInOrder = await Product.find({ _id: { $in: itemIds } })
+
+        if (productsInOrder.length !== itemIds.length) {
+            return next(new BadRequestError('Один или несколько товаров не найдены'))
+        }
+
+        const basket = itemIds.map((itemId: Types.ObjectId) => {
+            const product = productsInOrder.find((p) => p._id.equals(itemId))
             if (!product) {
-                throw new BadRequestError(`Товар с id ${id} не найден`)
+                throw new BadRequestError(`Товар с id ${itemId} не найден`)
             }
             if (product.price === null) {
-                throw new BadRequestError(`Товар с id ${id} не продается`)
+                throw new BadRequestError(`Товар с id ${itemId} не продается`)
             }
-            return basket.push(product)
+            return product
         })
-        const totalBasket = basket.reduce((a, c) => a + c.price, 0)
+
+        const totalBasket = basket.reduce(
+            (sum: number, product: IProduct) => sum + product.price,
+            0
+        )
         if (totalBasket !== total) {
             return next(new BadRequestError('Неверная сумма заказа'))
         }
 
         const newOrder = new Order({
             totalAmount: total,
-            products: items,
+            products: itemIds,
             payment,
             phone,
             email,
@@ -319,10 +329,11 @@ export const createOrder = async (
             customer: userId,
             deliveryAddress: address,
         })
-        const populateOrder = await newOrder.populate(['customer', 'products'])
-        await populateOrder.save()
 
-        return res.status(200).json(populateOrder)
+        await newOrder.save()
+        const populatedOrder = await newOrder.populate(['customer', 'products'])
+
+        return res.status(201).json(populatedOrder)
     } catch (error) {
         if (error instanceof MongooseError.ValidationError) {
             return next(new BadRequestError(error.message))
