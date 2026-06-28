@@ -4,6 +4,7 @@ import escapeRegExp from '../utils/escapeRegExp'
 import NotFoundError from '../errors/not-found-error'
 import Order from '../models/order'
 import User, { IUser } from '../models/user'
+import { normalizeLimit, normalizePage } from '../utils/pagination'
 
 // TODO: Добавить guard admin
 // eslint-disable-next-line max-len
@@ -15,8 +16,8 @@ export const getCustomers = async (
 ) => {
     try {
         const {
-            page = 1,
-            limit = 10,
+            page,
+            limit,
             sortField = 'createdAt',
             sortOrder = 'desc',
             registrationDateFrom,
@@ -29,6 +30,9 @@ export const getCustomers = async (
             orderCountTo,
             search,
         } = req.query
+
+        const normalizedPage = normalizePage(page, 1)
+        const normalizedLimit = normalizeLimit(limit, 10, 10)
 
         const filters: FilterQuery<Partial<IUser>> = {}
 
@@ -118,8 +122,8 @@ export const getCustomers = async (
 
         const options = {
             sort,
-            skip: (Number(page) - 1) * Number(limit),
-            limit: Number(limit),
+            skip: (normalizedPage - 1) * normalizedLimit,
+            limit: normalizedLimit,
         }
 
         const users = await User.find(filters, null, options).populate([
@@ -139,15 +143,15 @@ export const getCustomers = async (
         ])
 
         const totalUsers = await User.countDocuments(filters)
-        const totalPages = Math.ceil(totalUsers / Number(limit))
+        const totalPages = Math.ceil(totalUsers / normalizedLimit)
 
         res.status(200).json({
             customers: users,
             pagination: {
                 totalUsers,
                 totalPages,
-                currentPage: Number(page),
-                pageSize: Number(limit),
+                currentPage: normalizedPage,
+                pageSize: normalizedLimit,
             },
         })
     } catch (error) {

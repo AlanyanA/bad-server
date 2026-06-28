@@ -32,8 +32,13 @@ const storage = multer.diskStorage({
         file: Express.Multer.File,
         cb: FileNameCallback
     ) => {
-        const safeFileName = file.originalname.replace(/[^a-zA-Z0-9._-]/g, '_')
-        cb(null, safeFileName)
+        const timestamp = Date.now()
+        const extension = file.originalname.split('.').pop()?.toLowerCase() || 'bin'
+        const safeBaseName = file.originalname
+            .replace(/\.[^/.]+$/, '')
+            .replace(/[^a-zA-Z0-9_-]/g, '_')
+            .slice(0, 40) || 'file'
+        cb(null, `${safeBaseName}_${timestamp}.${extension}`)
     },
 })
 
