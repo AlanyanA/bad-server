@@ -17,12 +17,28 @@ const app = express()
 const { PORT = 3000, FRONTEND_URL = 'http://localhost:5173' } = process.env
 
 const corsOptions = {
-    origin: (_origin: string | undefined, callback: (err: Error | null, allow?: string) => void) => {
-        callback(null, FRONTEND_URL);
+    origin: (origin: string | undefined, callback: (err: Error | null, allow?: string | boolean) => void) => {
+        // Allow requests without origin (mobile apps, curl, desktop apps)
+        if (!origin) {
+            return callback(null, true)
+        }
+        
+        // Allow local development origins
+        if (origin === FRONTEND_URL || 
+            origin === 'http://localhost' ||
+            origin === 'http://localhost:80' ||
+            origin === 'http://localhost:3000' ||
+            origin === 'http://localhost:5173' ||
+            origin === 'http://127.0.0.1' ||
+            origin?.includes('localhost')) {
+            return callback(null, true)
+        }
+        
+        callback(null, FRONTEND_URL)
     },
     credentials: true,
     methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-CSRF-Token'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-CSRF-Token', 'X-XSRF-Token'],
     optionsSuccessStatus: 204,
 }
 
@@ -55,9 +71,14 @@ app.use(errorHandler)
 const bootstrap = async () => {
     try {
         await mongoose.connect(DB_ADDRESS)
-        app.listen(PORT, () => console.log('ok'))
+        app.listen(PORT, () => {
+            console.log(`Server running on port ${PORT}`)
+        }).on('error', (error) => {
+            console.error('Server error:', error)
+            process.exit(1)
+        })
     } catch (error) {
-        console.error(error)
+        console.error('Bootstrap error:', error)
         process.exit(1)
     }
 }
